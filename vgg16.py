@@ -1,0 +1,45 @@
+from PIL import Image
+from torchvision import models, transforms
+import torch
+import streamlit as st
+from torchvision.models import vgg
+
+
+# file_up = st.file_uploader("Upload an image", type="jpg")
+
+def vgg16_predict(image):
+    """Return top 5 predictions ranked by highest probability.
+    Parameters
+    ----------
+    :param image: uploaded image
+    :type image: jpg
+    :rtype: list
+    :return: top 5 predictions ranked by highest probability
+    """
+    # create a ResNet model
+    vgg16 = models.vgg16(pretrained=True)
+
+    # transform the input image through resizing, normalization
+    transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225]
+        )])
+
+    # load the image, pre-process it, and make predictions
+    img = Image.open(image)
+    batch_t = torch.unsqueeze(transform(img), 0)
+    vgg16.eval()
+
+    out = vgg16(batch_t)
+
+    with open('image_classes.txt') as f:
+        classes = [line.strip() for line in f.readlines()]
+
+    # return the top 5 predictions ranked by highest probabilities
+    prob = torch.nn.functional.softmax(out, dim=1)[0] * 100
+    _, indices = torch.sort(out, descending=True)
+    return [(classes[idx], prob[idx].item()) for idx in indices[0][:5]]
